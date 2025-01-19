@@ -62,7 +62,12 @@ Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadzil
 #### Sugerowane formy poprawy zabezpieczeń
 ### 3. Ujawnianie klucza API w logach
 #### Czynności prowadzące do wykrycia błędu i opis
+Klucz API jest wyświetlany w logach, następuje ujawnienie wrażliwych informacji. Klucze API są poufnymi danymi, które powinny być traktowane z dużą ostrożnością, ponieważ ich ujawnienie może prowadzić do nieautoryzowanego dostępu do systemu lub usług. Eksponowanie takich informacji w logach jest niebezpieczne, ponieważ logi mogą być dostępne dla nieupoważnionych użytkowników, co zwiększa ryzyko ataków, takich jak przejęcie dostępu do API lub inne formy wykorzystania wrażliwych danych.
+```python
+print('Received key:', api_key
+```
 #### Sugerowane formy poprawy zabezpieczeń
+Aby zapobiec temu zagrożeniu, należy unikać logowania wrażliwych danych, takich jak klucze API, hasła czy dane użytkowników. Zamiast tego, w logach powinny pojawiać się jedynie wiadomości zastępcze, które nie ujawniają rzeczywistych informacji, np. "Received API key" zamiast pełnego klucza. Dodatkowo, dobrym rozwiązaniem jest korzystanie z odpowiednich narzędzi do zarządzania logami, które pozwalają na maskowanie wrażliwych danych. Takie podejście znacząco podnosi poziom bezpieczeństwa aplikacji, minimalizując ryzyko przypadkowego lub złośliwego dostępu do poufnych informacji.
 ### 4. Brak walidacji wejścia dla nazwy użytkownika
 #### Czynności prowadzące do wykrycia błędu i opis
 Aplikacja nie sprawdza, czy username spełnia określone wymagania, takie jak długość, dozwolone znaki czy pustość, co może prowadzić do błędnych zapytań HTTP i problemów z bezpieczeństwem, takich jak ataki typu SQL injection czy XSS. Brak walidacji umożliwia użytkownikowi wprowadzenie nieprawidłowych danych, które mogą zakłócić działanie systemu.
