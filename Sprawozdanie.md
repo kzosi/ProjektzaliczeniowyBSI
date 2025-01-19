@@ -133,18 +133,124 @@ API_BASE_URL = os.getenv('API_BASE_URL', 'http://127.0.1.1:5000')
 W takim przypadku aplikacja będzie korzystać z adresu URL określonego w zmiennej środowiskowej API_BASE_URL, a jeśli ta zmienna nie jest ustawiona, użyje domyślnego adresu URL. Dzięki temu, aby zmienić środowisko, wystarczy tylko zaktualizować zmienną środowiskową lub plik konfiguracyjny, co sprawia, że aplikacja jest bardziej elastyczna i łatwiejsza w utrzymaniu.
 
 Dodatkowo, korzystanie z zewnętrznych plików konfiguracyjnych lub zmiennych środowiskowych pozwala na większe bezpieczeństwo, ponieważ wrażliwe dane, jak adresy URL do interfejsów API, nie są ujawniane bezpośrednio w kodzie źródłowym aplikacji.
+
+
 ### 6. Brak obsługi błędów dla wywołań żądań
+#### Opis podatności
+Aplikacja nie implementuje kompletnego mechanizmu obsługi błędów (ang. error handling). W wielu miejscach nie wykorzystywane są odpowiednie bloki try-except ani globalne metody (np. @app.errorhandler) do przechwytywania wyjątków. Może to powodować wyświetlanie surowego stack trace lub niejasnych komunikatów błędów, co bywa niebezpieczne (ujawnienie wewnętrznej struktury aplikacji) i dezorientuje użytkowników.
+#### Fragment kodu
+W pliku vulpy/_init_.py można zauważyć brak bloków obsługi wyjątków w wielu trasach, np. w funkcji index:
+```python
+@app.route('/', methods=['GET'])
+def index():
+    # Nie ma żadnych mechanizmów obsługi błędów
+    return render_template('index.html')
+```
+Żaden z endpointów nie stosuje globalnego przechwytywania błędów (np. @app.errorhandler(Exception)) – ewentualne błędy nie są obsługiwane w ujednolicony sposób.
 #### Czynności prowadzące do wykrycia błędu i opis
+- Wysłanie żądania pod niepoprawny endpoint, np. GET /wrongendpoint → zwracany jest ogólny błąd 404 bez przekierowania do specjalnego widoku błędu.
+- Generowanie błędu w jednym z endpointów (np. dzielenie przez zero) ujawnia w konsoli cały stack trace (kiedy debug jest włączony).
+- W kodzie brak wzorców typu try-except oraz brak centralnej obsługi wyjątków (np. @app.errorhandler(500)).
 #### Sugerowane formy poprawy zabezpieczeń
+- Wprowadzenie globalnego handlera błędów w Flask, np.:
+```python
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Można logować szczegóły błędu do plików,
+    # a użytkownikowi zwracać jedynie zwięzły komunikat.
+    return render_template('error.html'), 500
+```
+- Dodanie specyficznych obsług dla wybranych wyjątków HTTP (404, 500, 403).
+- Ukrywanie szczegółów błędów przed użytkownikiem końcowym w środowisku produkcyjnym (wyłączenie debug=True).
 ### 7. Brak walidacji złożoności haseł
+#### Opis podatności
+Podczas rejestracji lub edycji profilu użytkownika nie są narzucane żadne zasady dotyczące minimalnej długości czy złożoności hasła. Umożliwia to tworzenie bardzo krótkich i/lub prostych haseł typu 1234, admin, co znacząco zwiększa podatność aplikacji na ataki słownikowe i brute force.
+#### Fragment kodu
+W pliku vulpy/_init_.py, w funkcji obsługującej rejestrację (/register), nie ma żadnego sprawdzenia siły hasła:
+```python
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        email = request.form['email']
+
+        # Brak walidacji: minimalnej długości, znaków specjalnych itp.
+        user = User(username=username, password=password, email=email)
+        db.session.add(user)
+        db.session.commit()
+        return redirect(url_for('index'))
+    return render_template('register.html')
+```
 #### Czynności prowadzące do wykrycia błędu i opis
+- Założenie konta z hasłem o długości np. 1–2 znaków ("ab").
+- Brak jakiejkolwiek walidacji haseł w warstwie serwera – w logach nie pojawia się ostrzeżenie, a w bazie danych hasło zostaje zapisane bez sprawdzenia jakości.
 #### Sugerowane formy poprawy zabezpieczeń
+- Wymuszenie w backendzie odpowiedniej złożoności hasła, np. z użyciem:
+```python
+if len(password) < 8 or not re.search(r"\d", password):
+    flash("Hasło musi zawierać min. 8 znaków i co najmniej jedną cyfrę.")
+    return redirect(url_for('register'))
+```
+- Zwiększenie minimalnej długości hasła (np. 8–12 znaków) oraz wymaganie znaków specjalnych, dużych i małych liter.
+- Dodanie limitów prób logowania oraz mechanizmów blokowania konta przy wielokrotnych nieudanych próbach uwierzytelnienia.
 ### 8. HTTP zamiast HTTPS
+#### Opis podatności
+Aplikacja domyślnie uruchamia się przez zwykły protokół HTTP (port 5000 w trybie debug), bez jakiejkolwiek warstwy szyfrowania (SSL/TLS). Dane – w tym hasła i sesje – mogą być przechwycone, co prowadzi do potencjalnych ataków typu Man-in-the-middle.
+#### Fragment kodu
+```python
+if __name__ == "__main__":
+    # Aplikacja startuje w trybie debug i nasłuchuje na porcie 5000 bez SSL/TLS
+    app.run(debug=True, host='0.0.0.0', port=5000)
+```
 #### Czynności prowadzące do wykrycia błędu i opis
+- Uruchomienie aplikacji → http://localhost:5000 (brak wymuszenia https://).
+- Przeglądarka wyświetla zwykły protokół HTTP, a konsola deweloperska nie sygnalizuje połączenia szyfrowanego.
+- Prześledzenie ruchu sieciowego (np. Wireshark) pokazuje, że dane logowania przesyłane są jako tekst jawny.
 #### Sugerowane formy poprawy zabezpieczeń
+- Wdrożenie HTTPS: Użycie serwera proxy (np. Nginx) z certyfikatem SSL (np. z Let’s Encrypt).
+- W aplikacji Flask można skorzystać z zewnętrznego narzędzia do wystawienia połączenia TLS, a w środowisku produkcyjnym zawsze wyłączyć debug=True.
+- Ustawianie odpowiednich nagłówków bezpieczeństwa, np. Strict-Transport-Security.
 ### 9. Słaba generacja kluczy
+#### Opis podatności
+Aplikacja wykorzystuje statyczny, niezmienny sekret (SECRET_KEY) w pliku konfiguracyjnym, co wskazuje na brak bezpiecznej, pseudolosowej generacji klucza. Brak rotacji, użycie prostej wartości lub słabe źródło losowości sprawiają, że atakujący może przewidzieć lub poznać klucz, a w konsekwencji odczytać i modyfikować zaszyfrowane dane (np. sesje).
+#### Fragment kodu
+W pliku vulpy/config.py:
+```python
+SECRET_KEY = "myflaskappsecretkey"
+ALLOWED_HOSTS = ["*"]
+```
+Jest to stała wartość wpisana „na sztywno”, co oznacza brak rotacji i źródła entropii.
 #### Czynności prowadzące do wykrycia błędu i opis
+- Analiza plików konfiguracyjnych i odnalezienie wpisu SECRET_KEY.
+- Brak jakichkolwiek mechanizmów generowania losowego klucza przy starcie aplikacji.
+- Niestandardowe wartości klucza nie są w ogóle pobierane z bezpiecznego magazynu (np. zmiennych środowiskowych).
 #### Sugerowane formy poprawy zabezpieczeń
+- Wygenerowanie unikalnego klucza dla każdego środowiska (produkcja, staging) przy użyciu np. os.urandom(24) lub secrets.token_hex(32).
+- Przechowywanie klucza w bezpiecznym menedżerze sekretów (np. HashiCorp Vault, AWS Secrets Manager) lub w zmiennych środowiskowych (os.environ).
+- Okresowa rotacja sekretów i stosowanie sprawdzonych narzędzi do zarządzania nimi.
 ### 10. Hardkodowane hasła
+#### Opis podatności
+Bezpośrednie umieszczanie haseł i danych uwierzytelniających w plikach konfiguracyjnych bądź kodzie źródłowym jest poważnym zagrożeniem. W razie wycieku repozytorium lub nieautoryzowanego dostępu do serwera, atakujący łatwo przejmuje te dane i może zalogować się do bazy danych czy innych usług.
+#### Fragment kodu
+W pliku vulpy/database.py:
+```python
+DB_USERNAME = "admin"
+DB_PASSWORD = "admin"
+DB_NAME = "vulpy"
+DB_HOST = "localhost"
+```
+Wartości DB_USERNAME i DB_PASSWORD są jawnie zapisane jako "admin", co stanowi przykład hardkodowanego hasła.
 #### Czynności prowadzące do wykrycia błędu i opis
+- Proste wyszukiwanie w repozytorium (np. grep -Ri password).
+- Odczyt kodu w pliku database.py wykazuje brak odwołania do zmiennych środowiskowych lub zewnętrznych magazynów haseł.
+- Uruchomienie aplikacji i sprawdzenie logów pokazuje, że łączy się ona z bazą na lokalnym hoście używając tych statycznych danych.
 #### Sugerowane formy poprawy zabezpieczeń
+- Przeniesienie haseł do zmiennych środowiskowych i odczytywanie ich w kodzie:
+```python
+import os
+DB_USERNAME = os.environ.get("DB_USERNAME")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
+```
+- Korzystanie z bezpiecznych magazynów sekretów (Vault, Key Vault, itp.) zamiast przechowywać hasła w repozytorium.
+- Natychmiastowa zmiana hasła w środowisku produkcyjnym, jeśli kiedykolwiek zostało ujawnione w plikach publicznych.
