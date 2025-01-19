@@ -65,7 +65,27 @@ Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadzil
 #### Sugerowane formy poprawy zabezpieczeń
 ### 4. Brak walidacji wejścia dla nazwy użytkownika
 #### Czynności prowadzące do wykrycia błędu i opis
+Aplikacja nie sprawdza, czy username spełnia określone wymagania, takie jak długość, dozwolone znaki czy pustość, co może prowadzić do błędnych zapytań HTTP i problemów z bezpieczeństwem, takich jak ataki typu SQL injection czy XSS. Brak walidacji umożliwia użytkownikowi wprowadzenie nieprawidłowych danych, które mogą zakłócić działanie systemu.
+```python
+@click.argument('username')
+def cmd_api_client(username):
+    r = requests.get('http://127.0.1.1:5000/api/post/{}'.format(username))
+```
 #### Sugerowane formy poprawy zabezpieczeń
+Aby zapobiec tym problemom, warto dodać kontrolę, która upewni się, że username nie jest pusty, ma odpowiednią długość i zawiera tylko dozwolone znaki, np. alfanumeryczne. Taka walidacja pozwoli uniknąć błędów oraz poprawi bezpieczeństwo aplikacji. Implementując te proste zasady, aplikacja stanie się bardziej niezawodna i bezpieczna.
+```python
+def cmd_api_client(username):
+    # Walidacja wejścia dla nazwy użytkownika
+    if not username:
+        click.echo('Username cannot be empty.')
+        return
+    if len(username) < 3 or len(username) > 30:
+        click.echo('Username must be between 3 and 30 characters long.')
+        return
+    if not re.match('^[a-zA-Z0-9_]+$', username):
+        click.echo('Username can only contain letters, digits, and underscores.')
+        return
+```
 ### 5. Hardkodowany URL API
 #### Czynności prowadzące do wykrycia błędu i opis
 
