@@ -22,14 +22,14 @@ Wersja aplikacji: 1.0.0
 - Docker
 - SSL/TLS
 
-#### Opinia:</br>
-Aplikacja została zaprojektowana jako narzędzie edukacyjne do nauki testowania bezpieczeństwa. Zaletą jest podział na wersje **GOOD** i **BAD**, co umożliwia porównanie i analizę podatności w kontrolowanym środowisku. Najistotniejsze problemy w wersji **BAD** obejmują:
-- podatność na SQL Injection
-- Cross-Site Scripting (XSS)
-- Cross-Site Request Forgery (CSRF)
-- brak odpowiednich mechanizmów uwierzytelniania ról użytkowników
-
-Zaletą aplikacji jest wykorzystanie popularnych technologii i frameworków, co ułatwia wdrożenie i analizę testów bezpieczeństwa.
+##Opinia
+Aplikację należy ocenić negatywnie. Znalezione błędy dotyczą zarówno aspektów bezpieczeństwa, jak i jakości kodu, co czyni ją podatną na różne rodzaje ataków oraz utrudnia użytkowanie. Kluczowe problemy to:
+- brak zabezpieczeń przed SQL Injection
+- przechowywanie wrażliwych danych w postaci jawnej
+- ujawnianie poufnych informacji w logach
+- brak walidacji złożoności haseł
+- używanie HTTP zamiast HTTPS.
+Zaletą aplikacji jest jej implementacja w technologiach o dobrej dokumentacji, co umożliwia relatywnie łatwe wprowadzenie poprawek oraz dalszy rozwój. Poprawienie wskazanych problemów powinno być priorytetem, aby zapewnić bezpieczne i komfortowe korzystanie z aplikacji.
 
 #### Struktura aplikacji
 Testy przeprowadzone były w środowisku lokalnym z wykorzystaniem Dockera. Aplikacja działała w dwóch kontenerach:
@@ -52,47 +52,11 @@ Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadzil
    - HTTP zamiast HTTPS
    - Słaba generacja kluczy
    - Hardkodowane hasła
- 
-## Zlokalizowane problemy
-### 1. Wrażliwość na SQL Injection
-#### Czynności prowadzące do wykrycia błędu i opis
-Bezpośrednie wstawianie danych wejściowych, takich jak username i password, do zapytania SQL bez żadnej walidacji lub filtrowania stanowi poważne zagrożenie, ponieważ umożliwia atakującemu manipulowanie zapytaniem. Takie podejście stwarza ryzyko SQL Injection, które jest jednym z najczęściej wykorzystywanych rodzajów ataków na aplikacje webowe. Atakujący może wprowadzić specjalnie przygotowane dane, które zmieniają strukturę zapytania SQL, co prowadzi do nieautoryzowanego dostępu do systemu lub baz danych. Na przykład, jeśli atakujący poda jako nazwę użytkownika wartość ' OR '1'='1, zapytanie może zostać zmodyfikowane w sposób, który zawsze zwróci wynik, umożliwiając dostęp bez znajomości prawidłowego hasła.
-```python
-user = c.execute("SELECT * FROM users WHERE username = '{}' and password = '{}'".format(username, password)).fetchone()
-```
-```python
-c.execute("UPDATE users SET password = '{}' WHERE username = '{}'".format(password, username))
-```
-#### Sugerowane formy poprawy zabezpieczeń
-Aby zabezpieczyć kod przed atakami SQL Injection, należy unikać bezpośredniego wstawiania danych wejściowych, takich jak nazwa użytkownika czy hasło, do zapytań SQL w formie tekstu. Zamiast tego, należy korzystać z zapytań parametryzowanych (ang. parameterized queries), które traktują dane wejściowe jako oddzielne parametry, a nie część zapytania SQL. Dzięki temu baza danych automatycznie dba o odpowiednią walidację i formatowanie danych wejściowych, co uniemożliwia wstrzykiwanie złośliwego kodu i chroni aplikację przed atakami typu SQL Injection.
-```python
-user = c.execute("SELECT * FROM users WHERE username = ? and password = ?", (username, password)).fetchone()
-```
-```python
-c.execute("UPDATE users SET password = ? WHERE username = ?", (password, username))
-```
-### 2. Przechowywanie wrażliwych danych w postaci tekstu jawnego
-#### Czynności prowadzące do wykrycia błędu i opis
-W tym przypadku, klucz API (api_key) jest zapisany w pliku tekstowym (/tmp/supersecret.txt). Przechowywanie wrażliwego klucza API w formie jawnej w pliku stanowi poważne zagrożenie dla bezpieczeństwa. Jeśli ten plik nie jest odpowiednio zabezpieczony, np. przez odpowiednie uprawnienia dostępu, może zostać odczytany przez nieautoryzowane osoby, co umożliwia im dostęp do wrażliwych zasobów API.
-Jeśli plik jest dostępny w publicznie dostępnej lokalizacji (np. /tmp), każdy użytkownik lub proces może go odczytać. Klucz API nie jest szyfrowany, co oznacza, że w razie wycieku danych klucz będzie dostępny w swojej oryginalnej postaci. Jeżeli ten plik jest przechowywany na serwerze, który nie jest odpowiednio zabezpieczony, atakujący może uzyskać dostęp do systemu i pozyskać klucz API, co może prowadzić do nieautoryzowanego dostępu do API.
-```python
-with api_key_file.open('w') as outfile:
-    outfile.write(api_key)
-```
-#### Sugerowane formy poprawy zabezpieczeń
-Aby rozwiązać ten problem, zamiast przechowywać klucz API w pliku tekstowym w postaci jawnej, należy używać bezpieczniejszych metod przechowywania wrażliwych danych, takich jak:
-- Szyfrowanie: Klucz API powinien być szyfrowany przed zapisaniem go w pliku, a następnie deszyfrowany tylko w przypadku potrzeby użycia.
-- Bezpieczne magazyny sekretów: Należy rozważyć użycie specjalistycznych narzędzi do przechowywania sekretów, takich jak HashiCorp Vault, AWS Secrets Manager czy Azure Key Vault, które zapewniają bezpieczne przechowywanie i dostęp do kluczy API.
-- Ograniczenie dostępu do pliku: Jeśli klucz musi być przechowywany w pliku, dostęp do tego pliku powinien być ograniczony do tylko tych użytkowników lub procesów, które muszą go używać.
-### 3. Ujawnianie klucza API w logach
-#### Czynności prowadzące do wykrycia błędu i opis
-Klucz API jest wyświetlany w logach, następuje ujawnienie wrażliwych informacji. Klucze API są poufnymi danymi, które powinny być traktowane z dużą ostrożnością, ponieważ ich ujawnienie może prowadzić do nieautoryzowanego dostępu do systemu lub usług. Eksponowanie takich informacji w logach jest niebezpieczne, ponieważ logi mogą być dostępne dla nieupoważnionych użytkowników, co zwiększa ryzyko ataków, takich jak przejęcie dostępu do API lub inne formy wykorzystania wrażliwych danych.
-```python
-print('Received key:', api_key
-```
-#### Sugerowane formy poprawy zabezpieczeń
-Aby zapobiec temu zagrożeniu, należy unikać logowania wrażliwych danych, takich jak klucze API, hasła czy dane użytkowników. Zamiast tego, w logach powinny pojawiać się jedynie wiadomości zastępcze, które nie ujawniają rzeczywistych informacji, np. "Received API key" zamiast pełnego klucza. Dodatkowo, dobrym rozwiązaniem jest korzystanie z odpowiednich narzędzi do zarządzania logami, które pozwalają na maskowanie wrażliwych danych. Takie podejście znacząco podnosi poziom bezpieczeństwa aplikacji, minimalizując ryzyko przypadkowego lub złośliwego dostępu do poufnych informacji.
-### 4. Brak walidacji wejścia dla nazwy użytkownika
+
+## 1. Broken Access Control
+Jedno z najczęściej występujących zagrożeń w aplikacjach internetowych. Obejmuje sytuacje, w których użytkownicy mogą uzyskać dostęp do zasobów, do których nie mają uprawnień. Może to prowadzić do nieautoryzowanego odczytu, modyfikacji lub usunięcia danych.
+### Zlokalizowane problemy
+### Brak walidacji wejścia dla nazwy użytkownika
 #### Czynności prowadzące do wykrycia błędu i opis
 Aplikacja nie sprawdza, czy username spełnia określone wymagania, takie jak długość, dozwolone znaki czy pustość, co może prowadzić do błędnych zapytań HTTP i problemów z bezpieczeństwem, takich jak ataki typu SQL injection czy XSS. Brak walidacji umożliwia użytkownikowi wprowadzenie nieprawidłowych danych, które mogą zakłócić działanie systemu.
 ```python
@@ -115,7 +79,64 @@ def cmd_api_client(username):
         click.echo('Username can only contain letters, digits, and underscores.')
         return
 ```
-### 5. Hardkodowany URL API
+## 2. Cryptographic Failures
+### Przechowywanie wrażliwych danych w postaci tekstu jawnego
+Związane z niewłaściwym zabezpieczeniem danych wrażliwych, takich jak hasła, dane kart płatniczych czy klucze API. Brak szyfrowania lub użycie słabych algorytmów kryptograficznych naraża dane na przechwycenie.
+### Zlokalizowane problemy
+#### Czynności prowadzące do wykrycia błędu i opis
+W tym przypadku, klucz API (api_key) jest zapisany w pliku tekstowym (/tmp/supersecret.txt). Przechowywanie wrażliwego klucza API w formie jawnej w pliku stanowi poważne zagrożenie dla bezpieczeństwa. Jeśli ten plik nie jest odpowiednio zabezpieczony, np. przez odpowiednie uprawnienia dostępu, może zostać odczytany przez nieautoryzowane osoby, co umożliwia im dostęp do wrażliwych zasobów API.
+Jeśli plik jest dostępny w publicznie dostępnej lokalizacji (np. /tmp), każdy użytkownik lub proces może go odczytać. Klucz API nie jest szyfrowany, co oznacza, że w razie wycieku danych klucz będzie dostępny w swojej oryginalnej postaci. Jeżeli ten plik jest przechowywany na serwerze, który nie jest odpowiednio zabezpieczony, atakujący może uzyskać dostęp do systemu i pozyskać klucz API, co może prowadzić do nieautoryzowanego dostępu do API.
+```python
+with api_key_file.open('w') as outfile:
+    outfile.write(api_key)
+```
+#### Sugerowane formy poprawy zabezpieczeń
+Aby rozwiązać ten problem, zamiast przechowywać klucz API w pliku tekstowym w postaci jawnej, należy używać bezpieczniejszych metod przechowywania wrażliwych danych, takich jak:
+- Szyfrowanie: Klucz API powinien być szyfrowany przed zapisaniem go w pliku, a następnie deszyfrowany tylko w przypadku potrzeby użycia.
+- Bezpieczne magazyny sekretów: Należy rozważyć użycie specjalistycznych narzędzi do przechowywania sekretów, takich jak HashiCorp Vault, AWS Secrets Manager czy Azure Key Vault, które zapewniają bezpieczne przechowywanie i dostęp do kluczy API.
+- Ograniczenie dostępu do pliku: Jeśli klucz musi być przechowywany w pliku, dostęp do tego pliku powinien być ograniczony do tylko tych użytkowników lub procesów, które muszą go używać.
+###  Słaba generacja kluczy
+#### Opis podatności
+Aplikacja wykorzystuje statyczny, niezmienny sekret (SECRET_KEY) w pliku konfiguracyjnym, co wskazuje na brak bezpiecznej, pseudolosowej generacji klucza. Brak rotacji, użycie prostej wartości lub słabe źródło losowości sprawiają, że atakujący może przewidzieć lub poznać klucz, a w konsekwencji odczytać i modyfikować zaszyfrowane dane (np. sesje).
+#### Fragment kodu
+W pliku vulpy/config.py:
+```python
+SECRET_KEY = "myflaskappsecretkey"
+ALLOWED_HOSTS = ["*"]
+```
+Jest to stała wartość wpisana „na sztywno”, co oznacza brak rotacji i źródła entropii.
+#### Czynności prowadzące do wykrycia błędu i opis
+- Analiza plików konfiguracyjnych i odnalezienie wpisu SECRET_KEY.
+- Brak jakichkolwiek mechanizmów generowania losowego klucza przy starcie aplikacji.
+- Niestandardowe wartości klucza nie są w ogóle pobierane z bezpiecznego magazynu (np. zmiennych środowiskowych).
+#### Sugerowane formy poprawy zabezpieczeń
+- Wygenerowanie unikalnego klucza dla każdego środowiska (produkcja, staging) przy użyciu np. os.urandom(24) lub secrets.token_hex(32).
+- Przechowywanie klucza w bezpiecznym menedżerze sekretów (np. HashiCorp Vault, AWS Secrets Manager) lub w zmiennych środowiskowych (os.environ).
+- Okresowa rotacja sekretów i stosowanie sprawdzonych narzędzi do zarządzania nimi.
+## 3. Injection
+Ta podatność pozwala atakującym na wstrzyknięcie złośliwego kodu do aplikacji, np. SQL, LDAP czy poleceń systemowych. Może to prowadzić do kradzieży danych, ich modyfikacji lub przejęcia systemu. 
+### Zlokalizowane problemy
+#### Wrażliwość na SQL Injection
+##### Czynności prowadzące do wykrycia błędu i opis
+Bezpośrednie wstawianie danych wejściowych, takich jak username i password, do zapytania SQL bez żadnej walidacji lub filtrowania stanowi poważne zagrożenie, ponieważ umożliwia atakującemu manipulowanie zapytaniem. Takie podejście stwarza ryzyko SQL Injection, które jest jednym z najczęściej wykorzystywanych rodzajów ataków na aplikacje webowe. Atakujący może wprowadzić specjalnie przygotowane dane, które zmieniają strukturę zapytania SQL, co prowadzi do nieautoryzowanego dostępu do systemu lub baz danych. Na przykład, jeśli atakujący poda jako nazwę użytkownika wartość ' OR '1'='1, zapytanie może zostać zmodyfikowane w sposób, który zawsze zwróci wynik, umożliwiając dostęp bez znajomości prawidłowego hasła.
+```python
+user = c.execute("SELECT * FROM users WHERE username = '{}' and password = '{}'".format(username, password)).fetchone()
+```
+```python
+c.execute("UPDATE users SET password = '{}' WHERE username = '{}'".format(password, username))
+```
+##### Sugerowane formy poprawy zabezpieczeń
+Aby zabezpieczyć kod przed atakami SQL Injection, należy unikać bezpośredniego wstawiania danych wejściowych, takich jak nazwa użytkownika czy hasło, do zapytań SQL w formie tekstu. Zamiast tego, należy korzystać z zapytań parametryzowanych (ang. parameterized queries), które traktują dane wejściowe jako oddzielne parametry, a nie część zapytania SQL. Dzięki temu baza danych automatycznie dba o odpowiednią walidację i formatowanie danych wejściowych, co uniemożliwia wstrzykiwanie złośliwego kodu i chroni aplikację przed atakami typu SQL Injection.
+```python
+user = c.execute("SELECT * FROM users WHERE username = ? and password = ?", (username, password)).fetchone()
+```
+```python
+c.execute("UPDATE users SET password = ? WHERE username = ?", (password, username))
+```
+## 4. Insecure Design
+Obejmuje brak uwzględnienia bezpieczeństwa w procesie projektowania aplikacji. Może skutkować podatnościami, które trudno usunąć po wdrożeniu. 
+### Zlokalizowane problemy
+### Hardkodowany URL API
 #### Czynności prowadzące do wykrycia błędu i opis
 
 W kodzie znajduje się wywołanie HTTP za pomocą hardkodowanego URL:
@@ -133,9 +154,18 @@ API_BASE_URL = os.getenv('API_BASE_URL', 'http://127.0.1.1:5000')
 W takim przypadku aplikacja będzie korzystać z adresu URL określonego w zmiennej środowiskowej API_BASE_URL, a jeśli ta zmienna nie jest ustawiona, użyje domyślnego adresu URL. Dzięki temu, aby zmienić środowisko, wystarczy tylko zaktualizować zmienną środowiskową lub plik konfiguracyjny, co sprawia, że aplikacja jest bardziej elastyczna i łatwiejsza w utrzymaniu.
 
 Dodatkowo, korzystanie z zewnętrznych plików konfiguracyjnych lub zmiennych środowiskowych pozwala na większe bezpieczeństwo, ponieważ wrażliwe dane, jak adresy URL do interfejsów API, nie są ujawniane bezpośrednio w kodzie źródłowym aplikacji.
-
-
-### 6. Brak obsługi błędów dla wywołań żądań
+## 5. Security Misconfiguration
+Często wynika z pozostawienia domyślnych ustawień lub niewłaściwej konfiguracji serwerów i aplikacji. Może to obejmować wyeksponowane strony diagnostyczne lub brak ograniczenia dostępu do zasobów administracyjnych.
+### Zlokalizowane problemy
+### Ujawnianie klucza API w logach
+#### Czynności prowadzące do wykrycia błędu i opis
+Klucz API jest wyświetlany w logach, następuje ujawnienie wrażliwych informacji. Klucze API są poufnymi danymi, które powinny być traktowane z dużą ostrożnością, ponieważ ich ujawnienie może prowadzić do nieautoryzowanego dostępu do systemu lub usług. Eksponowanie takich informacji w logach jest niebezpieczne, ponieważ logi mogą być dostępne dla nieupoważnionych użytkowników, co zwiększa ryzyko ataków, takich jak przejęcie dostępu do API lub inne formy wykorzystania wrażliwych danych.
+```python
+print('Received key:', api_key
+```
+#### Sugerowane formy poprawy zabezpieczeń
+Aby zapobiec temu zagrożeniu, należy unikać logowania wrażliwych danych, takich jak klucze API, hasła czy dane użytkowników. Zamiast tego, w logach powinny pojawiać się jedynie wiadomości zastępcze, które nie ujawniają rzeczywistych informacji, np. "Received API key" zamiast pełnego klucza. Dodatkowo, dobrym rozwiązaniem jest korzystanie z odpowiednich narzędzi do zarządzania logami, które pozwalają na maskowanie wrażliwych danych. Takie podejście znacząco podnosi poziom bezpieczeństwa aplikacji, minimalizując ryzyko przypadkowego lub złośliwego dostępu do poufnych informacji.
+### Brak obsługi błędów dla wywołań żądań
 #### Opis podatności
 Aplikacja nie implementuje kompletnego mechanizmu obsługi błędów (ang. error handling). W wielu miejscach nie wykorzystywane są odpowiednie bloki try-except ani globalne metody (np. @app.errorhandler) do przechwytywania wyjątków. Może to powodować wyświetlanie surowego stack trace lub niejasnych komunikatów błędów, co bywa niebezpieczne (ujawnienie wewnętrznej struktury aplikacji) i dezorientuje użytkowników.
 #### Fragment kodu
@@ -162,7 +192,27 @@ def handle_exception(e):
 ```
 - Dodanie specyficznych obsług dla wybranych wyjątków HTTP (404, 500, 403).
 - Ukrywanie szczegółów błędów przed użytkownikiem końcowym w środowisku produkcyjnym (wyłączenie debug=True).
-### 7. Brak walidacji złożoności haseł
+### HTTP zamiast HTTPS
+#### Opis podatności
+Aplikacja domyślnie uruchamia się przez zwykły protokół HTTP (port 5000 w trybie debug), bez jakiejkolwiek warstwy szyfrowania (SSL/TLS). Dane – w tym hasła i sesje – mogą być przechwycone, co prowadzi do potencjalnych ataków typu Man-in-the-middle.
+#### Fragment kodu
+```python
+if __name__ == "__main__":
+    # Aplikacja startuje w trybie debug i nasłuchuje na porcie 5000 bez SSL/TLS
+    app.run(debug=True, host='0.0.0.0', port=5000)
+```
+#### Czynności prowadzące do wykrycia błędu i opis
+- Uruchomienie aplikacji → http://localhost:5000 (brak wymuszenia https://).
+- Przeglądarka wyświetla zwykły protokół HTTP, a konsola deweloperska nie sygnalizuje połączenia szyfrowanego.
+- Prześledzenie ruchu sieciowego (np. Wireshark) pokazuje, że dane logowania przesyłane są jako tekst jawny.
+#### Sugerowane formy poprawy zabezpieczeń
+- Wdrożenie HTTPS: Użycie serwera proxy (np. Nginx) z certyfikatem SSL (np. z Let’s Encrypt).
+- W aplikacji Flask można skorzystać z zewnętrznego narzędzia do wystawienia połączenia TLS, a w środowisku produkcyjnym zawsze wyłączyć debug=True.
+- Ustawianie odpowiednich nagłówków bezpieczeństwa, np. Strict-Transport-Security.
+## 6. Vulnerable and Outdated Components
+Występuje, gdy aplikacja korzysta z przestarzałych bibliotek lub komponentów zidentyfikowanych jako podatne.
+### Zlokalizowane problemy
+### Brak walidacji złożoności haseł
 #### Opis podatności
 Podczas rejestracji lub edycji profilu użytkownika nie są narzucane żadne zasady dotyczące minimalnej długości czy złożoności hasła. Umożliwia to tworzenie bardzo krótkich i/lub prostych haseł typu 1234, admin, co znacząco zwiększa podatność aplikacji na ataki słownikowe i brute force.
 #### Fragment kodu
@@ -194,42 +244,10 @@ if len(password) < 8 or not re.search(r"\d", password):
 ```
 - Zwiększenie minimalnej długości hasła (np. 8–12 znaków) oraz wymaganie znaków specjalnych, dużych i małych liter.
 - Dodanie limitów prób logowania oraz mechanizmów blokowania konta przy wielokrotnych nieudanych próbach uwierzytelnienia.
-### 8. HTTP zamiast HTTPS
-#### Opis podatności
-Aplikacja domyślnie uruchamia się przez zwykły protokół HTTP (port 5000 w trybie debug), bez jakiejkolwiek warstwy szyfrowania (SSL/TLS). Dane – w tym hasła i sesje – mogą być przechwycone, co prowadzi do potencjalnych ataków typu Man-in-the-middle.
-#### Fragment kodu
-```python
-if __name__ == "__main__":
-    # Aplikacja startuje w trybie debug i nasłuchuje na porcie 5000 bez SSL/TLS
-    app.run(debug=True, host='0.0.0.0', port=5000)
-```
-#### Czynności prowadzące do wykrycia błędu i opis
-- Uruchomienie aplikacji → http://localhost:5000 (brak wymuszenia https://).
-- Przeglądarka wyświetla zwykły protokół HTTP, a konsola deweloperska nie sygnalizuje połączenia szyfrowanego.
-- Prześledzenie ruchu sieciowego (np. Wireshark) pokazuje, że dane logowania przesyłane są jako tekst jawny.
-#### Sugerowane formy poprawy zabezpieczeń
-- Wdrożenie HTTPS: Użycie serwera proxy (np. Nginx) z certyfikatem SSL (np. z Let’s Encrypt).
-- W aplikacji Flask można skorzystać z zewnętrznego narzędzia do wystawienia połączenia TLS, a w środowisku produkcyjnym zawsze wyłączyć debug=True.
-- Ustawianie odpowiednich nagłówków bezpieczeństwa, np. Strict-Transport-Security.
-### 9. Słaba generacja kluczy
-#### Opis podatności
-Aplikacja wykorzystuje statyczny, niezmienny sekret (SECRET_KEY) w pliku konfiguracyjnym, co wskazuje na brak bezpiecznej, pseudolosowej generacji klucza. Brak rotacji, użycie prostej wartości lub słabe źródło losowości sprawiają, że atakujący może przewidzieć lub poznać klucz, a w konsekwencji odczytać i modyfikować zaszyfrowane dane (np. sesje).
-#### Fragment kodu
-W pliku vulpy/config.py:
-```python
-SECRET_KEY = "myflaskappsecretkey"
-ALLOWED_HOSTS = ["*"]
-```
-Jest to stała wartość wpisana „na sztywno”, co oznacza brak rotacji i źródła entropii.
-#### Czynności prowadzące do wykrycia błędu i opis
-- Analiza plików konfiguracyjnych i odnalezienie wpisu SECRET_KEY.
-- Brak jakichkolwiek mechanizmów generowania losowego klucza przy starcie aplikacji.
-- Niestandardowe wartości klucza nie są w ogóle pobierane z bezpiecznego magazynu (np. zmiennych środowiskowych).
-#### Sugerowane formy poprawy zabezpieczeń
-- Wygenerowanie unikalnego klucza dla każdego środowiska (produkcja, staging) przy użyciu np. os.urandom(24) lub secrets.token_hex(32).
-- Przechowywanie klucza w bezpiecznym menedżerze sekretów (np. HashiCorp Vault, AWS Secrets Manager) lub w zmiennych środowiskowych (os.environ).
-- Okresowa rotacja sekretów i stosowanie sprawdzonych narzędzi do zarządzania nimi.
-### 10. Hardkodowane hasła
+## 7. Identification and Authentication Failures
+Dotyczy problemów z mechanizmami identyfikacji i uwierzytelniania użytkowników, takich jak brak wieloskładnikowego uwierzytelniania czy możliwość brute force.
+### Zlokalizowane problemy
+### Hardkodowane hasła
 #### Opis podatności
 Bezpośrednie umieszczanie haseł i danych uwierzytelniających w plikach konfiguracyjnych bądź kodzie źródłowym jest poważnym zagrożeniem. W razie wycieku repozytorium lub nieautoryzowanego dostępu do serwera, atakujący łatwo przejmuje te dane i może zalogować się do bazy danych czy innych usług.
 #### Fragment kodu
@@ -254,3 +272,15 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD")
 ```
 - Korzystanie z bezpiecznych magazynów sekretów (Vault, Key Vault, itp.) zamiast przechowywać hasła w repozytorium.
 - Natychmiastowa zmiana hasła w środowisku produkcyjnym, jeśli kiedykolwiek zostało ujawnione w plikach publicznych.
+## 8. Software and Data Integrity Failures 
+Obejmuje sytuacje, w których aplikacja nie zapewnia weryfikacji integralności danych lub oprogramowania. Może to pozwolić atakującym na wprowadzenie złośliwego kodu.
+### Zlokalizowane problemy
+Nie zlokalizowano problemów tego typu
+## 9. Security Logging and Monitoring Failures
+Niedostateczne logowanie i monitorowanie zdarzeń bezpieczeństwa utrudnia identyfikację i reakcję na ataki.
+### Zlokalizowane problemy
+Nie zlokalizowano problemów tego typu
+## 10. Server-Side Request Forgery (SSRF)
+Występuje, gdy aplikacja pozwala na wysyłanie złośliwych żądań przez serwer na zasoby wewnętrzne lub zewnętrzne.
+### Zlokalizowane problemy
+Nie zlokalizowano problemów tego typu
