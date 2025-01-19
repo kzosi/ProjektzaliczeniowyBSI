@@ -1,3 +1,43 @@
+# Audyt aplikacji vulpy
+### Michał Macias, Zofia Kościńska 
+
+## Podsumowanie
+
+Raport jest podsumowaniem testów bezpieczeństwa aplikacji webowej Vulpy. Jest to aplikacja blogowa napisana w języku Python, wykorzystująca framework Flask oraz bazę danych SQLite. Repozytorium jest publiczne, a aplikacja występuje w dwóch wersjach: **GOOD**, uwzględniającej najlepsze praktyki bezpiecznego programowania, oraz **BAD**, zawierającej celowo wprowadzone podatności.
+
+#### Funkcjonalności aplikacji:
+- rejestracja i logowanie
+- publikowanie oraz przeglądanie postów
+- uwierzytelnianie dwuskładnikowe (MFA)
+- dostęp do API do odczytu i zapisu postów
+
+Ostatnia aktualizacja: styczeń 2025</br>
+Wersja aplikacji: 1.0.0
+
+#### Technologie wykorzystane w aplikacji:
+- Python 3
+- Flask
+- SQLite
+- Werkzeug
+- Docker
+- SSL/TLS
+
+#### Opinia:</br>
+Aplikacja została zaprojektowana jako narzędzie edukacyjne do nauki testowania bezpieczeństwa. Zaletą jest podział na wersje **GOOD** i **BAD**, co umożliwia porównanie i analizę podatności w kontrolowanym środowisku. Najistotniejsze problemy w wersji **BAD** obejmują:
+- podatność na SQL Injection
+- Cross-Site Scripting (XSS)
+- Cross-Site Request Forgery (CSRF)
+- brak odpowiednich mechanizmów uwierzytelniania ról użytkowników
+
+Zaletą aplikacji jest wykorzystanie popularnych technologii i frameworków, co ułatwia wdrożenie i analizę testów bezpieczeństwa.
+
+#### Struktura aplikacji
+Testy przeprowadzone były w środowisku lokalnym z wykorzystaniem Dockera. Aplikacja działała w dwóch kontenerach:
+- kontener z aplikacją Flask
+- kontener z bazą danych SQLite
+
+Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadziliśmy ręcznie, analizując kod źródłowy i wyszukując w nim błędy oraz podatności.
+
 ## Klasyfikacja błędów:
 - High
   - Wrażliwość na SQL Injection
