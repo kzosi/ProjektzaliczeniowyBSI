@@ -73,7 +73,17 @@ c.execute("UPDATE users SET password = ? WHERE username = ?", (password, usernam
 ```
 ### 2. Przechowywanie wrażliwych danych w postaci tekstu jawnego
 #### Czynności prowadzące do wykrycia błędu i opis
+W tym przypadku, klucz API (api_key) jest zapisany w pliku tekstowym (/tmp/supersecret.txt). Przechowywanie wrażliwego klucza API w formie jawnej w pliku stanowi poważne zagrożenie dla bezpieczeństwa. Jeśli ten plik nie jest odpowiednio zabezpieczony, np. przez odpowiednie uprawnienia dostępu, może zostać odczytany przez nieautoryzowane osoby, co umożliwia im dostęp do wrażliwych zasobów API.
+Jeśli plik jest dostępny w publicznie dostępnej lokalizacji (np. /tmp), każdy użytkownik lub proces może go odczytać. Klucz API nie jest szyfrowany, co oznacza, że w razie wycieku danych klucz będzie dostępny w swojej oryginalnej postaci. Jeżeli ten plik jest przechowywany na serwerze, który nie jest odpowiednio zabezpieczony, atakujący może uzyskać dostęp do systemu i pozyskać klucz API, co może prowadzić do nieautoryzowanego dostępu do API.
+```python
+with api_key_file.open('w') as outfile:
+    outfile.write(api_key)
+```
 #### Sugerowane formy poprawy zabezpieczeń
+Aby rozwiązać ten problem, zamiast przechowywać klucz API w pliku tekstowym w postaci jawnej, należy używać bezpieczniejszych metod przechowywania wrażliwych danych, takich jak:
+- Szyfrowanie: Klucz API powinien być szyfrowany przed zapisaniem go w pliku, a następnie deszyfrowany tylko w przypadku potrzeby użycia.
+- Bezpieczne magazyny sekretów: Należy rozważyć użycie specjalistycznych narzędzi do przechowywania sekretów, takich jak HashiCorp Vault, AWS Secrets Manager czy Azure Key Vault, które zapewniają bezpieczne przechowywanie i dostęp do kluczy API.
+- Ograniczenie dostępu do pliku: Jeśli klucz musi być przechowywany w pliku, dostęp do tego pliku powinien być ograniczony do tylko tych użytkowników lub procesów, które muszą go używać.
 ### 3. Ujawnianie klucza API w logach
 #### Czynności prowadzące do wykrycia błędu i opis
 Klucz API jest wyświetlany w logach, następuje ujawnienie wrażliwych informacji. Klucze API są poufnymi danymi, które powinny być traktowane z dużą ostrożnością, ponieważ ich ujawnienie może prowadzić do nieautoryzowanego dostępu do systemu lub usług. Eksponowanie takich informacji w logach jest niebezpieczne, ponieważ logi mogą być dostępne dla nieupoważnionych użytkowników, co zwiększa ryzyko ataków, takich jak przejęcie dostępu do API lub inne formy wykorzystania wrażliwych danych.
