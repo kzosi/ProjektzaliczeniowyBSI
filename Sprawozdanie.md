@@ -56,7 +56,21 @@ Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadzil
 ## Zlokalizowane problemy
 ### 1. Wrażliwość na SQL Injection
 #### Czynności prowadzące do wykrycia błędu i opis
+Bezpośrednie wstawianie danych wejściowych, takich jak username i password, do zapytania SQL bez żadnej walidacji lub filtrowania stanowi poważne zagrożenie, ponieważ umożliwia atakującemu manipulowanie zapytaniem. Takie podejście stwarza ryzyko SQL Injection, które jest jednym z najczęściej wykorzystywanych rodzajów ataków na aplikacje webowe. Atakujący może wprowadzić specjalnie przygotowane dane, które zmieniają strukturę zapytania SQL, co prowadzi do nieautoryzowanego dostępu do systemu lub baz danych. Na przykład, jeśli atakujący poda jako nazwę użytkownika wartość ' OR '1'='1, zapytanie może zostać zmodyfikowane w sposób, który zawsze zwróci wynik, umożliwiając dostęp bez znajomości prawidłowego hasła.
+```python
+user = c.execute("SELECT * FROM users WHERE username = '{}' and password = '{}'".format(username, password)).fetchone()
+```
+```python
+c.execute("UPDATE users SET password = '{}' WHERE username = '{}'".format(password, username))
+```
 #### Sugerowane formy poprawy zabezpieczeń
+Aby zabezpieczyć kod przed atakami SQL Injection, należy unikać bezpośredniego wstawiania danych wejściowych, takich jak nazwa użytkownika czy hasło, do zapytań SQL w formie tekstu. Zamiast tego, należy korzystać z zapytań parametryzowanych (ang. parameterized queries), które traktują dane wejściowe jako oddzielne parametry, a nie część zapytania SQL. Dzięki temu baza danych automatycznie dba o odpowiednią walidację i formatowanie danych wejściowych, co uniemożliwia wstrzykiwanie złośliwego kodu i chroni aplikację przed atakami typu SQL Injection.
+```python
+user = c.execute("SELECT * FROM users WHERE username = ? and password = ?", (username, password)).fetchone()
+```
+```python
+c.execute("UPDATE users SET password = ? WHERE username = ?", (password, username))
+```
 ### 2. Przechowywanie wrażliwych danych w postaci tekstu jawnego
 #### Czynności prowadzące do wykrycia błędu i opis
 #### Sugerowane formy poprawy zabezpieczeń
