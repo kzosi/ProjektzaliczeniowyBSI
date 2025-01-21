@@ -22,7 +22,7 @@ Wersja aplikacji: 1.0.0
 - Docker
 - SSL/TLS
 
-##Opinia
+## Opinia
 Aplikację należy ocenić negatywnie. Znalezione błędy dotyczą zarówno aspektów bezpieczeństwa, jak i jakości kodu, co czyni ją podatną na różne rodzaje ataków oraz utrudnia użytkowanie. Kluczowe problemy to:
 - brak zabezpieczeń przed SQL Injection
 - przechowywanie wrażliwych danych w postaci jawnej
