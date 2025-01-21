@@ -80,9 +80,9 @@ def cmd_api_client(username):
         return
 ```
 ## 2. Cryptographic Failures
-### Przechowywanie wrażliwych danych w postaci tekstu jawnego
 Związane z niewłaściwym zabezpieczeniem danych wrażliwych, takich jak hasła, dane kart płatniczych czy klucze API. Brak szyfrowania lub użycie słabych algorytmów kryptograficznych naraża dane na przechwycenie.
 ### Zlokalizowane problemy
+### Przechowywanie wrażliwych danych w postaci tekstu jawnego
 #### Czynności prowadzące do wykrycia błędu i opis
 W tym przypadku, klucz API (api_key) jest zapisany w pliku tekstowym (/tmp/supersecret.txt). Przechowywanie wrażliwego klucza API w formie jawnej w pliku stanowi poważne zagrożenie dla bezpieczeństwa. Jeśli ten plik nie jest odpowiednio zabezpieczony, np. przez odpowiednie uprawnienia dostępu, może zostać odczytany przez nieautoryzowane osoby, co umożliwia im dostęp do wrażliwych zasobów API.
 Jeśli plik jest dostępny w publicznie dostępnej lokalizacji (np. /tmp), każdy użytkownik lub proces może go odczytać. Klucz API nie jest szyfrowany, co oznacza, że w razie wycieku danych klucz będzie dostępny w swojej oryginalnej postaci. Jeżeli ten plik jest przechowywany na serwerze, który nie jest odpowiednio zabezpieczony, atakujący może uzyskać dostęp do systemu i pozyskać klucz API, co może prowadzić do nieautoryzowanego dostępu do API.
