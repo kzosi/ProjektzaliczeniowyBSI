@@ -36,7 +36,7 @@ Testy przeprowadzone były w środowisku lokalnym z wykorzystaniem Dockera. Apli
 - kontener z aplikacją Flask
 - kontener z bazą danych SQLite
 
-Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadziliśmy ręcznie, analizując kod źródłowy i wyszukując w nim błędy oraz podatności.
+Audyt został oparty na metodyce OWASP TOP 10 w wersji 2021. Testy przeprowadziliśmy ręcznie, analizując kod źródłowy i wyszukując w nim błędy oraz podatności oraz manualnie.
 
 ## Klasyfikacja błędów:
 - High
